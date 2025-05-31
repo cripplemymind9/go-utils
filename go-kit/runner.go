@@ -10,6 +10,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -35,7 +36,7 @@ type runner struct {
 // NewRunner создает экземпляр Runner с конфигурацией по умолчанию
 // Возвращает: указатель на новый Runner
 func NewRunner() *runner {
-	cfg := GetConfig()
+	cfg := GetConfig(viper.New())
 
 	return &runner{
 		config: cfg,
@@ -46,6 +47,10 @@ func NewRunner() *runner {
 // Принимает: реализацию интерфейса App
 // Возвращает: ошибку запуска или выполнения
 func (r *runner) Run(appImpl App) error {
+	log.Info().
+		Any("config", r.config).
+		Msg("starting runner")
+
 	c := make(chan os.Signal, 1)
 
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
@@ -53,6 +58,9 @@ func (r *runner) Run(appImpl App) error {
 	go func() {
 		for {
 			sig := <-c
+
+			log.Warn().
+				Msgf("got signal: %s", sig)
 
 			switch sig {
 			case syscall.SIGINT:
@@ -74,7 +82,10 @@ func (r *runner) Run(appImpl App) error {
 	grpcServer := grpc.NewServer(opts...)
 
 	if err := r.initServer(appImpl, grpcServer, r.config); err != nil {
-		log.Error().Err(err).Msg("error of server initialization")
+		log.Error().
+			Err(err).
+			Msg("error of server initialization")
+
 		return err
 	}
 
@@ -85,7 +96,9 @@ func (r *runner) Run(appImpl App) error {
 // Принимает: реализацию App, настроенный gRPC сервер, конфигурацию App
 // Возвращает: ошибку инициализации
 func (r *runner) initServer(
-	appImpl App, grpcServer *grpc.Server, cfg Config,
+	appImpl App,
+	grpcServer *grpc.Server,
+	cfg Config,
 ) error {
 	appImpl.RegisterGRPCServices(grpcServer)
 

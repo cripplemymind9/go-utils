@@ -22,9 +22,12 @@ type Server struct {
 }
 
 func NewServer(
-	grpcServer *grpc.Server, cfg Config, muxOptions ...runtime.ServeMuxOption,
+	grpcServer *grpc.Server,
+	cfg Config,
+	muxOptions ...runtime.ServeMuxOption,
 ) (*Server, error) {
 	grpcAddr := fmt.Sprintf("0.0.0.0:%d", cfg.GRPCPort)
+
 	listener, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen on %s: %w", grpcAddr, err)
@@ -50,7 +53,9 @@ func (s *Server) StartGRPCServer() {
 
 	go func() {
 		if err := s.grpcServer.Serve(s.grpcListener); err != nil {
-			log.Error().Err(err).Msg("Failed to serve gRPC")
+			log.Error().
+				Err(err).
+				Msg("Failed to serve gRPC")
 		}
 	}()
 }
@@ -63,7 +68,9 @@ func (s *Server) StartGateway(app App) error {
 
 	go func() {
 		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error().Err(err).Msg("Failed to serve HTTP gateway")
+			log.Error().
+				Err(err).
+				Msg("Failed to serve HTTP gateway")
 		}
 	}()
 
